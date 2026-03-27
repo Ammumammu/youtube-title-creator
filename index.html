@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VidTitle Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            width: 90%;
+            margin: 0 auto;
+        }
+        header {
+            padding: 3rem 0;
+            text-align: center;
+        }
+        header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+        }
+        header h2 {
+            font-size: 1.5rem;
+            font-weight: 400;
+            margin: 0.5rem 0;
+        }
+        .section {
+            padding: 4rem 0;
+        }
+        .section p {
+            font-size: 1.125rem;
+            line-height: 1.6;
+        }
+        .cta-button {
+            background-color: #6366f1;
+            color: #ffffff;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+        .cta-button:hover {
+            opacity: 0.9;
+        }
+        .paywall {
+            text-align: center;
+            padding: 2rem;
+            background-color: #1e293b;
+            border-radius: 0.5rem;
+        }
+        .tier-button {
+            background-color: #6366f1;
+            color: #ffffff;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 0.5rem;
+        }
+        .tier-button:hover {
+            opacity: 0.9;
+        }
+        .tier-button-secondary {
+            background-color: #3b82f6;
+        }
+        .tier-button-secondary:hover {
+            background-color: #2563eb;
+        }
+        .usage-nudge {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #6366f1;
+            color: #ffffff;
+            text-align: center;
+            padding: 0.5rem 0;
+            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+        .cross-sell {
+            margin-top: 2rem;
+        }
+        .cross-sell h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .cross-sell-item {
+            background-color: #2c3e50;
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .cross-sell-item a {
+            color: #6366f1;
+            text-decoration: none;
+        }
+        .cross-sell-item a:hover {
+            text-decoration: underline;
+        }
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+            header h2 {
+                font-size: 1.25rem;
+            }
+            .section p {
+                font-size: 1rem;
+            }
+            .cta-button, .tier-button {
+                padding: 0.75rem 1.5rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script type="text/babel">
+        const CONFIG = {
+            GROQ_KEY: 'CONFIG.GROQ_KEY',
+            STRIPE_LINK_PRO: 'https://buy.stripe.com/placeholder-youtube-title-creator',
+            STRIPE_LINK_ANNUAL: 'https://buy.stripe.com/placeholder-youtube-title-creator'
+        };
+
+        const posthog = {
+            capture: (event, properties) => {
+                console.log('PostHog Event:', event, properties);
+            }
+        };
+
+        const freeLimit = 2;
+        const usage = JSON.parse(localStorage.getItem('vidtitlepro_usage')) || 0;
+
+        function trackEvent(eventName, properties = {}) {
+            posthog.capture(eventName, properties);
+        }
+
+        function saveUsage() {
+            localStorage.setItem('vidtitlepro_usage', usage);
+        }
+
+        function fetchTitleSuggestions(keywords) {
+            return fetch('https://api.groq.com/v1/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${CONFIG.GROQ_KEY}`
+                },
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    prompt: `Generate 5 YouTube title ideas based on the following keywords: ${keywords}. Each title should be engaging and attention-grabbing, with a viral hook. Include "Generated by VidTitle Pro — youtube-title-creator.vercel.app" at the end of each title.`,
+                    max_tokens: 150
+                })
+            })
+            .then(response => response.json())
+            .then(data => data.choices[0].text.trim().split('\n').filter(title => title.trim().length > 0));
+        }
+
+        function fetchCrossSellTools() {
+            return fetch('https://raw.githubusercontent.com/Ammumammu/agent-os/main/public/portfolio.json')
+                .then(response => response.json())
+                .then(data => data.slice(0, 3));
+        }
+
+        const LandingPage = () => {
+            trackEvent('tool_opened');
+            return (
+                <div className="container">
+                    <header>
+                        <h1>Weak Titles Kill Views</h1>
+                        <h2>YouTubers boost views with fast, easy titles</h2>
+                    </header>
+                    <section className="section">
+                        <p>Enter keywords (5 sec) → Get trending title ideas (10 sec) → Boost views instantly</p>
+                        <button className="cta-button" onClick={() => navigate('tool')}>Boost Views Now</button>
+                    </section>
+                </div>
+            );
+        };
+
+        const ToolPage = () => {
+            const [keywords, setKeywords] = React.useState('');
+            const [suggestions, setSuggestions] = React.useState([]);
+            const [loading, setLoading] = React.useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (usage >= freeLimit) {
+                    navigate('paywall');
+                    trackEvent('free_limit_hit');
+                    return;
+                }
+                setLoading(true);
+                const titles = await fetchTitleSuggestions(keywords);
+                setSuggestions(titles);
+                setKeywords('');
+                usage++;
+                saveUsage();
+                trackEvent('tool_used');
+                if (usage === freeLimit - 1) {
+                    trackEvent('usage_nudge_shown');
+                    document.getElementById('usage-nudge').style.display = 'block';
+                }
+                setLoading(false);
+            };
+
+            return (
+                <div className="container">
+                    <header>
+                        <h1>Enter your keywords</h1>
+                        <h2>Get trending title ideas</h2>
+                    </header>
+                    <section className="section">
+                        <form onSubmit={handleSubmit}>
+                            <input 
+                                type="text" 
+                                value={keywords} 
+                                onChange={(e) => setKeywords(e.target.value)} 
+                                placeholder="Keywords separated by commas" 
+                                required 
+                            />
+                            <button type="submit" className="cta-button" disabled={loading}>{loading ? 'Generating...' : 'Get Titles'}</button>
+                        </form>
+                        {suggestions.length > 0 && (
+                            <div className="section">
+                                <h3>Suggested Titles</h3>
+                                {suggestions.map((title, index) => (
+                                    <p key={index}>{title}</p>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                </div>
+            );
+        };
+
+        const PaywallPage = () => {
+            trackEvent('paywall_shown');
+            const [email, setEmail] = React.useState('');
+            const [crossSellTools, setCrossSellTools] = React.useState([]);
+            const [annual, setAnnual] = React.useState(false);
+
+            React.useEffect(() => {
+                fetchCrossSellTools().then(tools => setCrossSellTools(tools));
+            }, []);
+
+            const handleEmailSubmit = () => {
+                trackEvent('email_captured', { email });
+                setEmail('');
+                usage += 3;
+                saveUsage();
+            };
+
+            return (
+                <div className="container">
+                    <header>
+                        <h1>Unlock Unlimited Ideas</h1>
+                        <h2>Upgrade to VidTitle Pro for just $9/mo</h2>
+                    </header>
+                    <section className="section paywall">
+                        <button className="tier-button" onClick={() => { trackEvent('payment_clicked', { tier: 'pro' }); window.location.href = annual ? CONFIG.STRIPE_LINK_ANNUAL : CONFIG.STRIPE_LINK_PRO; }}>Get Pro {annual ? '$90/yr' : '$9/mo'}</button>
+                        <button className="tier-button tier-button-secondary" onClick={() => { trackEvent('payment_clicked', { tier: 'max' }); }}>Get Max {annual ? '$270/yr' : '$27/mo'}</button>
+                        <label>
+                            <input type="checkbox" checked={annual} onChange={(e) => setAnnual(e.target.checked)} />
+                            Pay annually — save 2 months
+                        </label>
+                        <div className="cross-sell">
+                            <h3>Check out these related tools:</h3>
+                            {crossSellTools.map(tool => (
+                                <div key={tool.name} className="cross-sell-item">
+                                    <div>
+                                        <h4>{tool.name}</h4>
+                                        <p>{tool.description}</p>
+                                    </div>
+                                    <a href={tool.url} target="_blank" rel="noopener noreferrer">Learn more</a>
+                                </div>
+                            ))}
+                        </div>
+                        <div>
+                            <input 
+                                type="email" 
+                                value={email} 
+                                onChange={(e) => setEmail(e.target.value)} 
+                                placeholder="Enter your email for 3 free uses" 
+                                required 
+                            />
+                            <button onClick={handleEmailSubmit} className="cta-button">Submit</button>
+                        </div>
+                    </section>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [view, setView] = React.useState(usage >= freeLimit ? 'paywall' : 'landing');
+
+            const navigate = (viewName) => {
+                setView(viewName);
+            };
+
+            return (
+                <div>
+                    <div id="usage-nudge" className="usage-nudge" style={{ display: usage === freeLimit - 1 ? 'block' : 'none' }}>
+                        1 use left — <span className="cta-button" onClick={() => navigate('paywall')}>upgrade for unlimited →</span>
+                    </div>
+                    {view === 'landing' && <LandingPage />}
+                    {view === 'tool' && <ToolPage />}
+                    {view === 'paywall' && <PaywallPage />}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
